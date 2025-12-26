@@ -11,9 +11,9 @@ const Register = sequelize.define(
         },
 
         role: {
-            type: DataTypes.ENUM("user", "admin"),
+            type: DataTypes.ENUM("ind", "org"),
             allowNull: false,
-            defaultValue: "user"
+            defaultValue: "ind"
         },
 
         username: {

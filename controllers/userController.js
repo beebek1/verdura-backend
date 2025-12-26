@@ -1,19 +1,26 @@
 const RegisterUser = require("../models/userModel");
+const OrgInfo = require("../models/orgModel");
+const IndInfo = require("../models/indModel");
+
 const sendEmail = require("../helpers/sendEmail");
+
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 
+
+//user registeration
 const registerUser = async(req, res) =>{
 
-    const{username, email, password} = req.body;
+    const{username, email, password, role, orgDetails, indDetails} = req.body;
 
-    if(!username || !email || !password){
+    if(!username || !email || !password || !role){
         return res.status(400).json({
             message: "please fill all the fields"
         })
-    };
+    }
 
-    const user = await RegisterUser.findOne({where:{username: username}});
+    //check whether the email already exists
+    const user = await RegisterUser.findOne({where:{email : email}});
     if(user){
         return res.status(400).json({
             message: `${username} already exists`
@@ -30,14 +37,24 @@ const registerUser = async(req, res) =>{
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     //passing data to model
-    const createUser = await RegisterUser.create({
-        role: "user",
+    const currentUser = await RegisterUser.create({
+        role: role === "org" ?"org" : "ind",
         username,
         email,
         password : hashedPassword,
         verificationToken,
         verificationTokenExpires
     });
+
+    if(role === "org" && orgDetails){
+        await OrgInfo.create({org_id : currentUser.id, ...orgDetails});
+        
+    }else if(role === "ind" && indDetails){
+        await IndInfo.create({ind_id: currentUser.id, ...indDetails});
+
+    }else{
+        console.log("data filled in main user table but not in subTables", currentUser.id)
+    }
 
     //for sending email
     const verifyLink = `http://localhost:3000/api/user/verify-email?token=${verificationToken}`;
@@ -53,10 +70,10 @@ const registerUser = async(req, res) =>{
     )
 
     return res.status(201).json({
-        message: "user registered successfully",
+        message: "user captured but unverified",
         user:{
-            username: createUser.username,
-            email: createUser.email
+            username: currentUser.username,
+            email: currentUser.email
         }
     });
     }
@@ -73,16 +90,16 @@ const userLogin = async (req, res) =>{
         })
     }
 
-    const user = await RegisterUser.findOne({where: {email : email, role: "user"}})
+    const user = await RegisterUser.findOne({where: {email : email, role: "org"}})
 
     //if there is no user
     if(!user){
         return res.status(404).json({
             message: ` no user with this email ${email} exists `
         })
-    }else if(user.isVerified===false){
-        return res.status(404).json({
-            message: `${email} isn't verified`
+    }else if(!user.isVerified){
+        return res.status(403).json({
+            message: `${email} isn't verified. Please verify yourself`
         })
     }
 

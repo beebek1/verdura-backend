@@ -2,6 +2,11 @@ const express = require("express");
 const app = express();
 const { sequelize, connectDB } = require("./db/database");
 
+//models
+require("./models/userModel");
+require("./models/indModel");
+require("./models/orgModel");
+
 //middleware
 app.use(express.json());
 
@@ -17,7 +22,7 @@ app.get("/",(req,res) =>{
 const startServer = async () => {
     const PORT = process.env.PORT || 3000;
     await connectDB();
-    await sequelize.sync({force: true});              //force and sync
+    await sequelize.sync({alter: true});              //force and sync
     app.listen(PORT, () => {
         console.log(`Server is running on http://localhost:${PORT}`);
     });
